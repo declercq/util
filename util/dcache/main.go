@@ -36,76 +36,73 @@ func runf(format string, a ...any) (string, error) {
 	return out, err
 }
 
-func dcacheCmd(cmd *cobra.Command, args []string) error {
+func runfs(format string, a ...any) error {
+	_, err := runf(format, a...)
+	return err
+}
+
+func fatalErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func dcacheCmd(cmd *cobra.Command, args []string) (ret error) {
+	defer func() {
+		if r := recover(); r != nil {
+			ret = r.(error)
+		}
+	}()
 	dirty := false
 	targetDir := args[0]
 	registry := args[1]
 	repository := args[2]
 	targetDirHash, err := runf("git log -n1 --pretty=format:\"%%h\" %s", targetDir)
-	if err != nil {
-		return err
-	}
+	fatalErr(err)
 	wc, err := runf("git status --porcelain=v1 %s", targetDir)
-	if err != nil {
-		return err
-	}
+	fatalErr(err)
 	if len(wc) > 0 {
 		*buildF = true
 		dirty = true
 	}
 	dockerPath := fmt.Sprintf("%s/%s:%s", registry, repository, targetDirHash)
 	date := time.Now().Format("20060102030405")
-	dockerPathLong := dockerPath + "." + date
+	dockerPathLong := fmt.Sprintf("%s.%s", dockerPath, date)
 	dockerPathLatest := fmt.Sprintf("%s/%s:%s", registry, repository, "latest")
 	if !dirty {
 		// best effort to pull target image
-		_, _ = runf("docker pull %s", dockerPath)
+		_ = runfs("docker pull %s", dockerPath)
 		wc, err = runf("docker image ls -q %s", dockerPath)
-		if err != nil {
-			return err
-		}
+		fatalErr(err)
 		if len(wc) == 0 {
 			*buildF = true
 		}
 	}
 	if *buildF {
-		_, err := runf("docker build -f %s --tag %s %s", *sourceF, dockerPath, targetDir)
-		if err != nil {
-			return err
-		}
+		fatalErr(runfs("docker build -f %s --tag %s %s", *sourceF, dockerPath, targetDir))
 		if !dirty {
-			_, err = runf("docker tag %s %s", dockerPath, dockerPathLong)
-			if err != nil {
-				return err
-			}
+			fatalErr(runfs("docker tag %s %s", dockerPath, dockerPathLong))
 			if *uploadF {
-				_, err = runf("docker push %s", dockerPath)
-				if err != nil {
-					return err
-				}
-				_, err = runf("docker push %s", dockerPathLong)
-				if err != nil {
-					return err
-				}
+				fatalErr(runfs("docker push %s", dockerPath))
+				fatalErr(runfs("docker push %s", dockerPathLong))
 			}
 		}
 	}
 	if *latestF {
-		_, err = runf("docker tag %s %s", dockerPath, dockerPathLatest)
-		if err != nil {
-			return err
-		}
+		fatalErr(runfs("docker tag %s %s", dockerPath, dockerPathLatest))
 	}
 	return nil
 }
 
 func main() {
 	root := &cobra.Command{
-		Use:   "dcache",
+		Use:   "dcache <dir> <registry> <repository>",
 		Short: "dcache builds & caches docker utility images",
-		Long:  "TODO",
-		RunE:  dcacheCmd,
-		Args:  cobra.ExactArgs(3),
+		Long: "dcache builds & caches docker utility images\n" +
+			"The image will only be built if there is change detected in the Dockerfile or build context.\n" +
+			"This is based on the git hash of the target directory.",
+		RunE: dcacheCmd,
+		Args: cobra.ExactArgs(3),
 	}
 	buildF = root.Flags().BoolP("build", "b", false, "always build")
 	debugF = root.Flags().BoolP("debug", "d", false, "debug output")

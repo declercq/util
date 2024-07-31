@@ -43,7 +43,7 @@ func DockerCache(targetDir string, registry string, repository string, build boo
 		_ = r.Runfp("docker build -f %s --tag %s %s", source, dockerPath, targetDir)
 		if !dirty {
 			// tagging with the date helps us track the image source
-			dockerPathLong := fmt.Sprintf("%s.%s", dockerPath, time.Now().Format("20060102030405"))
+			dockerPathLong := fmt.Sprintf("%s.%s", dockerPath, time.Now().Format("20060102150405"))
 			_ = r.Runfp("docker tag %s %s", dockerPath, dockerPathLong)
 			if upload {
 				_ = r.Runfp("docker push %s", dockerPath)

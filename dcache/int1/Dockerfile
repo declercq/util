@@ -1,4 +1,4 @@
-from: ubuntu:24.04
-RUN apt-get update -yqq &&
-    apt-get instal -yqq vim
+FROM ubuntu:24.04
+RUN apt-get update -yqq && \
+    apt-get install -yqq vim
 

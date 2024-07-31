@@ -12,7 +12,7 @@ import (
 var debugF *bool
 var inheritF *bool
 
-func dcacheCmd(cmd *cobra.Command, args []string) {
+func dargsCmd(cmd *cobra.Command, args []string) {
 	cmd.SilenceUsage = true
 	targetDir := args[0]
 	var d io.Writer
@@ -26,11 +26,10 @@ func dcacheCmd(cmd *cobra.Command, args []string) {
 func main() {
 	root := &cobra.Command{
 		Use:   "dargs",
-		Short: "dcache builds & caches docker utility images",
-		Long: "dcache builds & caches docker utility images\n" +
-			"The image will only be built if there is change detected in the Dockerfile or build context.\n" +
-			"This is based on the git hash of the target directory.",
-		Run:  dcacheCmd,
+		Short: "dargs generates default command line args for docker utility image use",
+		Long: "dargs generates default command line args for docker utility image use\n" +
+			"This includes mounting a local directory into the container and inheriting mounts where appropriate.",
+		Run:  dargsCmd,
 		Args: cobra.ExactArgs(1),
 	}
 	debugF = root.Flags().BoolP("debug", "d", false, "debug output")
